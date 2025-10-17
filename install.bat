@@ -17,9 +17,12 @@ echo Activating virtual environment...
 call venv\Scripts\activate.bat
 
 echo.
-echo Installing dependencies...
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+echo Upgrading pip and build tools...
+python -m pip install --upgrade pip setuptools wheel
+
+echo.
+echo Installing dependencies (this may take 5-10 minutes)...
+pip install --prefer-binary -r requirements.txt
 
 if errorlevel 1 (
     echo.

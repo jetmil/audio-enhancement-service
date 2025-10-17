@@ -1,23 +1,29 @@
 # Audio Enhancement Service Requirements
 # PyTorch already installed (2.6.0+cu124)
 
+# Build tools (install first)
+setuptools>=65.0.0
+wheel>=0.40.0
+
 # Core dependencies - compatible with AudioSR
-numpy<=1.23.5
-scipy>=1.9.0,<1.12.0
+numpy==1.23.5
+scipy==1.10.1
 
 # Audio processing libraries
 audiosr==0.0.7
 demucs==4.0.1
-noisereduce>=2.0.0
-librosa>=0.9.0,<0.11.0
-soundfile>=0.12.0
-pydub>=0.25.0
+noisereduce==2.0.1
+librosa==0.10.0
+soundfile==0.12.1
+pydub==0.25.1
 
 # Web frameworks
-gradio>=4.0.0
-fastapi>=0.100.0
-uvicorn[standard]>=0.23.0
-python-multipart>=0.0.6
+gradio==4.20.0
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
 
-# Utilities
-tqdm>=4.65.0
+# Additional dependencies
+protobuf==3.20.3
+httpx==0.26.0
+tqdm==4.66.1
