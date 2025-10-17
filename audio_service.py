@@ -83,12 +83,18 @@ def reduce_noise(audio_path: str) -> Tuple[np.ndarray, int]:
 
     audio, sr = sf.read(audio_path)
 
-    # Apply neural noise reduction
+    # Convert to mono if stereo
+    if len(audio.shape) > 1:
+        audio = np.mean(audio, axis=1)
+
+    # Apply neural noise reduction with proper STFT parameters
     cleaned_audio = nr.reduce_noise(
         y=audio,
         sr=sr,
         stationary=True,
-        prop_decrease=0.8
+        prop_decrease=0.8,
+        n_fft=2048,
+        hop_length=512
     )
 
     print(f"Noise reduced (sample rate: {sr} Hz)")
