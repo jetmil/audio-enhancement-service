@@ -1,0 +1,21 @@
+# Audio Enhancement Service Requirements
+# PyTorch already installed (2.6.0+cu124)
+
+# Audio processing libraries
+audiosr==0.0.7
+demucs==4.0.1
+noisereduce==3.0.2
+librosa==0.10.2
+soundfile==0.12.1
+pydub==0.25.1
+
+# Web frameworks
+gradio==4.44.0
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# Utilities
+numpy==1.26.4
+scipy==1.13.1
+tqdm==4.66.5
