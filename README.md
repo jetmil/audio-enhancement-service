@@ -65,7 +65,7 @@ start_service.bat
 start_service_python311.bat
 ```
 
-The service will launch on **http://localhost:7860**
+The service will launch on **http://localhost:7861**
 
 ## 📖 Usage
 

@@ -430,8 +430,8 @@ def main():
 
     # Launch hybrid server
     print("\n🚀 Starting services...")
-    print("\n📊 Gradio Interface: http://localhost:7860")
-    print("🔌 FastAPI Docs: http://localhost:7860/docs")
+    print("\n📊 Gradio Interface: http://localhost:7861")
+    print("🔌 FastAPI Docs: http://localhost:7861/docs")
     print("\n" + "="*80 + "\n")
 
     # Launch with FastAPI mounted
@@ -440,7 +440,7 @@ def main():
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=7860,
+        port=7861,
         log_level="info"
     )
 

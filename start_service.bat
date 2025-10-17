@@ -17,8 +17,8 @@ call venv\Scripts\activate.bat
 echo.
 echo Starting hybrid Gradio + FastAPI server...
 echo.
-echo Gradio Interface will be available at: http://localhost:7860
-echo FastAPI Docs will be available at: http://localhost:7860/docs
+echo Gradio Interface will be available at: http://localhost:7861
+echo FastAPI Docs will be available at: http://localhost:7861/docs
 echo.
 echo Press Ctrl+C to stop the service
 echo.
