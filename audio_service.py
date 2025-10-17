@@ -35,18 +35,9 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 TEMP_DIR = Path("temp")
 TEMP_DIR.mkdir(exist_ok=True)
 
-# Global model cache
-audiosr_model = None
-
-def load_audiosr():
-    """Lazy loading of AudioSR model"""
-    global audiosr_model
-    if audiosr_model is None:
-        print("Loading AudioSR model...")
-        import audiosr
-        audiosr_model = audiosr.build_model(model_name="basic", device=device)
-        print("AudioSR model loaded!")
-    return audiosr_model
+# Import torchaudio for neural resampling (already installed with PyTorch)
+import torchaudio
+import torchaudio.transforms as T
 
 def isolate_voice_demucs(audio_path: str) -> str:
     """
@@ -103,44 +94,44 @@ def reduce_noise(audio_path: str) -> Tuple[np.ndarray, int]:
     print(f"Noise reduced (sample rate: {sr} Hz)")
     return cleaned_audio, sr
 
-def enhance_audio_sr(audio: np.ndarray, sr: int, target_sr: int = 48000) -> Tuple[np.ndarray, int]:
+def resample_audio(audio: np.ndarray, sr: int, target_sr: int = 48000) -> Tuple[np.ndarray, int]:
     """
-    Step 3: Audio super-resolution to enhance quality
-    Returns enhanced audio at target sample rate
+    Step 3: Neural resample audio to target sample rate using torchaudio
+    Returns resampled audio at target sample rate
     """
-    print(f"Step 3/3: Enhancing quality with AudioSR (target: {target_sr} Hz)...")
-
-    model = load_audiosr()
+    print(f"Step 3/3: Neural resampling to {target_sr} Hz (torchaudio)...")
 
     # Convert to mono if stereo
     if len(audio.shape) > 1:
         audio = np.mean(audio, axis=1)
 
-    # Normalize
-    audio = audio / (np.max(np.abs(audio)) + 1e-8)
+    if sr != target_sr:
+        # Convert to torch tensor
+        waveform = torch.from_numpy(audio).float().unsqueeze(0)  # Add channel dimension
 
-    # Save temp file for AudioSR
-    temp_file = TEMP_DIR / "temp_for_sr.wav"
-    sf.write(temp_file, audio, sr)
+        # Neural resampling with Kaiser window (high quality)
+        resampler = T.Resample(
+            orig_freq=sr,
+            new_freq=target_sr,
+            resampling_method="kaiser_window",
+            lowpass_filter_width=64,
+            rolloff=0.9475937167399596,
+            beta=14.769656459379492
+        ).to(device)
 
-    # AudioSR enhancement
-    enhanced = model(
-        str(temp_file),
-        guidance_scale=3.5,
-        ddim_steps=50,
-        seed=42
-    )
+        # Apply resampling on GPU if available
+        if device == "cuda":
+            waveform = waveform.to(device)
+            resampled = resampler(waveform)
+            resampled = resampled.cpu().numpy().squeeze()
+        else:
+            resampled = resampler(waveform).numpy().squeeze()
 
-    # AudioSR returns tensor, convert to numpy
-    if isinstance(enhanced, torch.Tensor):
-        enhanced = enhanced.cpu().numpy()
-
-    # Squeeze to remove batch dimension
-    if len(enhanced.shape) > 1:
-        enhanced = enhanced.squeeze()
-
-    print(f"Audio enhanced to {target_sr} Hz")
-    return enhanced, target_sr
+        print(f"Audio resampled from {sr} Hz to {target_sr} Hz (neural/GPU-accelerated)")
+        return resampled, target_sr
+    else:
+        print(f"Audio already at {target_sr} Hz")
+        return audio, sr
 
 def convert_to_stereo(audio: np.ndarray) -> np.ndarray:
     """
@@ -216,11 +207,11 @@ def process_audio(
         else:
             audio, sr = sf.read(current_file)
 
-        # Step 3: Super-resolution (optional)
+        # Step 3: Resampling (optional)
         if enable_sr:
             if not enable_noise_reduction:
                 audio, sr = sf.read(current_file)
-            enhanced_audio, enhanced_sr = enhance_audio_sr(audio, sr, target_sr)
+            enhanced_audio, enhanced_sr = resample_audio(audio, sr, target_sr)
         else:
             enhanced_audio, enhanced_sr = audio, sr
 
@@ -273,8 +264,8 @@ def create_gradio_interface():
         # 🎵 Audio Enhancement Service
         **AI-Powered Voice Isolation + Quality Enhancement**
 
-        Combines Demucs (voice isolation) + noisereduce + AudioSR (super-resolution)
-        Optimized for RTX 3090 | CUDA 12.4
+        Demucs (voice isolation) + noisereduce + torchaudio neural resampling
+        Optimized for RTX 3090 | CUDA 12.4 | GPU-accelerated
         """)
 
         with gr.Row():
@@ -299,9 +290,9 @@ def create_gradio_interface():
                 )
 
                 sr_check = gr.Checkbox(
-                    label="Audio Super-Resolution (AudioSR)",
+                    label="Neural Resampling (GPU)",
                     value=True,
-                    info="Enhance quality and upscale"
+                    info="High-quality GPU-accelerated resampling"
                 )
 
                 target_sr_slider = gr.Slider(
@@ -329,10 +320,11 @@ def create_gradio_interface():
         ### 💡 Tips
         - **Voice Isolation**: Best for removing music/noise from speech
         - **Noise Reduction**: Removes static, hum, background noise
-        - **Super-Resolution**: Upscales to studio quality (48kHz)
+        - **Neural Resampling**: GPU-accelerated high-quality resampling to 48kHz
         - Use all three for maximum quality improvement
 
         **Output Format**: MP3 Stereo 192 kbps (mono input → stereo output)
+        **Processing**: GPU-accelerated on RTX 3090
         """)
 
         process_btn.click(

@@ -24,21 +24,45 @@ AI-Powered Audio Enhancement with Voice Isolation and Quality Upscaling
 
 ## 🚀 Quick Start
 
+### Python Version Choice
+
+**Option A: Python 3.13** (current, without AudioSR)
+- Faster, simpler installation
+- Uses librosa for resampling (no AI enhancement)
+- Recommended for most users
+
+**Option B: Python 3.11** (with AudioSR AI enhancement)
+- Best quality (AI-powered super-resolution)
+- Requires Python 3.11 installation
+- Slower installation (~15 min)
+
 ### 1. Installation
 
+**Option A (Python 3.13 - Recommended):**
 ```batch
 install.bat
 ```
 
+**Option B (Python 3.11 with AudioSR):**
+```batch
+install_python311.bat
+```
+
 This will:
 - Create Python virtual environment
-- Install all dependencies (AudioSR, Demucs, Gradio, FastAPI, etc.)
+- Install all dependencies (Demucs, Gradio, FastAPI, etc.)
 - Download required AI models
 
 ### 2. Start Service
 
+**For Python 3.13:**
 ```batch
 start_service.bat
+```
+
+**For Python 3.11 with AudioSR:**
+```batch
+start_service_python311.bat
 ```
 
 The service will launch on **http://localhost:7860**
