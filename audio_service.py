@@ -341,7 +341,7 @@ def create_gradio_interface():
 
 app = FastAPI(title="Audio Enhancement API", version="1.0.0")
 
-@app.get("/")
+@app.get("/api")
 def read_root():
     """API status endpoint"""
     return {
@@ -350,12 +350,12 @@ def read_root():
         "device": device,
         "gpu": torch.cuda.get_device_name(0) if device == "cuda" else "N/A",
         "endpoints": {
-            "POST /enhance": "Upload audio file for enhancement",
-            "GET /outputs/{filename}": "Download enhanced audio"
+            "POST /api/enhance": "Upload audio file for enhancement",
+            "GET /api/outputs/{filename}": "Download enhanced audio"
         }
     }
 
-@app.post("/enhance")
+@app.post("/api/enhance")
 async def enhance_audio_api(
     file: UploadFile = File(...),
     enable_demucs: bool = True,
@@ -386,13 +386,13 @@ async def enhance_audio_api(
         return {
             "status": "success",
             "output_file": Path(output_path).name,
-            "download_url": f"/outputs/{Path(output_path).name}"
+            "download_url": f"/api/outputs/{Path(output_path).name}"
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/outputs/{filename}")
+@app.get("/api/outputs/{filename}")
 def download_output(filename: str):
     """Download enhanced audio file"""
     file_path = OUTPUT_DIR / filename
@@ -411,7 +411,9 @@ def download_output(filename: str):
 
 def main():
     """Launch hybrid Gradio + FastAPI server"""
+    import webbrowser
     import threading
+    import time
 
     print("="*80)
     print("🎵 AUDIO ENHANCEMENT SERVICE - HYBRID MODE")
@@ -425,20 +427,26 @@ def main():
     # Create Gradio interface
     gradio_app = create_gradio_interface()
 
-    # Mount FastAPI app within Gradio
-    gradio_app.queue()
+    # Mount Gradio at root, FastAPI at /api
+    app_with_gradio = gr.mount_gradio_app(app, gradio_app, path="/")
 
     # Launch hybrid server
     print("\n🚀 Starting services...")
     print("\n📊 Gradio Interface: http://localhost:7861")
     print("🔌 FastAPI Docs: http://localhost:7861/docs")
+    print("🔌 API Status: http://localhost:7861/api")
     print("\n" + "="*80 + "\n")
 
-    # Launch with FastAPI mounted
-    gr.mount_gradio_app(app, gradio_app, path="/")
+    # Auto-open browser after 2 seconds
+    def open_browser():
+        time.sleep(2)
+        webbrowser.open("http://localhost:7861")
+        print("✓ Browser opened!")
+
+    threading.Thread(target=open_browser, daemon=True).start()
 
     uvicorn.run(
-        app,
+        app_with_gradio,
         host="0.0.0.0",
         port=7861,
         log_level="info"
