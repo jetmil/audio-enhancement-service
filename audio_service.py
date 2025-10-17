@@ -87,14 +87,16 @@ def reduce_noise(audio_path: str) -> Tuple[np.ndarray, int]:
     if len(audio.shape) > 1:
         audio = np.mean(audio, axis=1)
 
-    # Apply neural noise reduction with proper STFT parameters
+    # Apply neural noise reduction with GENTLE parameters for music quality
     cleaned_audio = nr.reduce_noise(
         y=audio,
         sr=sr,
-        stationary=True,
-        prop_decrease=0.8,
+        stationary=False,  # Better for varying noise
+        prop_decrease=0.3,  # Much gentler (was 0.8)
         n_fft=2048,
-        hop_length=512
+        hop_length=512,
+        freq_mask_smooth_hz=500,  # Smooth frequency masking
+        time_mask_smooth_ms=50     # Smooth time masking
     )
 
     print(f"Noise reduced (sample rate: {sr} Hz)")
@@ -151,7 +153,7 @@ def convert_to_stereo(audio: np.ndarray) -> np.ndarray:
 
 def save_as_mp3(audio: np.ndarray, sr: int, output_path: str, bitrate: str = "192k"):
     """
-    Save audio as MP3 stereo 192 kbps
+    Save audio as MP3 stereo 192 kbps with HIGH QUALITY settings
 
     Args:
         audio: Audio array (mono or stereo)
@@ -162,20 +164,29 @@ def save_as_mp3(audio: np.ndarray, sr: int, output_path: str, bitrate: str = "19
     # Convert to stereo if mono
     stereo_audio = convert_to_stereo(audio)
 
+    # Normalize to prevent clipping (gentle)
+    max_val = np.abs(stereo_audio).max()
+    if max_val > 0.95:
+        stereo_audio = stereo_audio * (0.95 / max_val)
+
     # Save as temporary WAV first
     temp_wav = TEMP_DIR / "temp_for_mp3.wav"
-    sf.write(temp_wav, stereo_audio, sr)
+    sf.write(temp_wav, stereo_audio, sr, subtype='PCM_24')  # 24-bit for quality
 
-    # Convert to MP3 using pydub
+    # Convert to MP3 using pydub with HIGH QUALITY parameters
     audio_segment = AudioSegment.from_wav(temp_wav)
     audio_segment.export(
         output_path,
         format="mp3",
         bitrate=bitrate,
-        parameters=["-ac", "2"]  # Force stereo
+        parameters=[
+            "-ac", "2",           # Stereo
+            "-q:a", "0",          # Highest quality VBR (0-9, 0=best)
+            "-compression_level", "0"  # Best compression quality
+        ]
     )
 
-    print(f"Saved as MP3 stereo {bitrate}: {output_path}")
+    print(f"Saved as MP3 stereo {bitrate} (high quality): {output_path}")
 
 def process_audio(
     input_file: str,
@@ -291,8 +302,8 @@ def create_gradio_interface():
 
                 noise_check = gr.Checkbox(
                     label="Noise Reduction (Neural)",
-                    value=True,
-                    info="Remove background noise"
+                    value=False,  # OFF by default - can degrade quality
+                    info="⚠️ May reduce quality - use only for noisy recordings"
                 )
 
                 sr_check = gr.Checkbox(
@@ -324,13 +335,15 @@ def create_gradio_interface():
 
         gr.Markdown("""
         ### 💡 Tips
-        - **Voice Isolation**: Best for removing music/noise from speech
-        - **Noise Reduction**: Removes static, hum, background noise
-        - **Neural Resampling**: GPU-accelerated high-quality resampling to 48kHz
-        - Use all three for maximum quality improvement
+        - **Voice Isolation**: Removes music/background - keeps only voice
+        - **Noise Reduction**: ⚠️ Can degrade quality! Use ONLY for very noisy audio
+        - **Neural Resampling**: High-quality upsampling to 48kHz
 
-        **Output Format**: MP3 Stereo 192 kbps (mono input → stereo output)
-        **Processing**: GPU-accelerated on RTX 3090
+        ### 🎯 Recommended Settings:
+        - **Music quality**: Voice Isolation ✓, Noise Reduction ✗, Resampling ✓
+        - **Noisy recordings**: All three ✓
+
+        **Output**: MP3 Stereo 192 kbps | **GPU**: RTX 3090
         """)
 
         process_btn.click(
